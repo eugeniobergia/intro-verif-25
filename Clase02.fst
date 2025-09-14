@@ -113,11 +113,12 @@ let ex_falso (#a:Type) (f : falso) : a =
 
 (* Demostrar *)
 let neu1 (#a:Type) : oo a falso -> a =
-  admit()
+  function
+  | Inl x -> x
 
 (* Demostrar *)
 let neu2 (#a:Type) : a -> oo a falso =
-  admit()
+  fun x -> Inl x
 
 (* Distribución de `yy` sobre `oo`, en ambas direcciones *)
 let distr_yyoo_1 (#a #b #c : Type)
@@ -133,51 +134,71 @@ let distr_yyoo_1 (#a #b #c : Type)
 let distr_yyoo_2 (#a #b #c : Type)
   : oo (yy a b) (yy a c) -> yy a (oo b c)
 =
-  admit()
+  function
+  | Inl (x, y) -> (x, Inl y)
+  | Inr (x, z) -> (x, Inr z)
 
 let distr_ooyy_1 (#a #b #c : Type)
   : oo a (yy b c) -> yy (oo a b) (oo a c)
 =
-  admit()
+  function
+  | Inl x -> (Inl x, Inl x)
+  | Inr (y, z) -> (Inr y, Inr z)
 
 let distr_ooyy_2 (#a #b #c : Type)
   : yy (oo a b) (oo a c) -> oo a (yy b c)
 =
-  admit()
+  fun (xy, xz) ->
+  match xy with
+  | Inl x -> Inl x
+  | Inr y -> match xz with
+             | Inl x -> Inl x
+             | Inr z -> Inr (y, z)
 
 let modus_tollens (#a #b : Type)
   : (a -> b) -> (no b -> no a)
 =
-  admit()
+  fun ab nb a -> nb (ab a)
   (* Vale la recíproca? *)
 
 let modus_tollendo_ponens (#a #b : Type)
   : (oo a b) -> (no a -> b)
 =
-  admit()
+  fun ab na ->
+  match ab with
+  | Inl a -> na a
+  | Inr b -> b
   (* Vale la recíproca? *)
 
 let modus_ponendo_tollens (#a #b : Type)
   : no (yy a b) -> (a -> no b)
 =
-  admit()
+  fun nab a b -> nab (a, b)
   (* Vale la recíproca? *)
 
 (* Declare y pruebe, si es posible, las leyes de De Morgan
 para `yy` y `oo`. ¿Son todas intuicionistas? *)
 
 let demorgan1_ida (#a #b : Type) : oo (no a) (no b) -> no (yy a b) =
-  admit()
+  fun naonb (a, b) ->
+  match naonb with
+  | Inl na -> na a
+  | Inr nb -> nb b
 
 let demorgan1_vuelta (#a #b : Type) : no (yy a b) -> oo (no a) (no b) =
   admit()
 
 let demorgan2_ida (#a #b : Type) : yy (no a) (no b) -> no (oo a b) =
-  admit()
+  fun (na, nb) aob ->
+  match aob with
+  | Inl a -> na a
+  | Inr b -> nb b
 
 let demorgan2_vuelta (#a #b : Type) : no (oo a b) -> yy (no a) (no b) =
-  admit()
-
+  fun naob ->
+  let na : no a = fun a -> naob (Inl a) in
+  let nb : no b = fun b -> naob (Inr b) in
+  (na, nb)
 
  (* P y no P no pueden valer a la vez. *)
 let no_contradiccion (#a:Type) : no (yy a (no a)) =
@@ -198,7 +219,10 @@ let ley_impl1 (p q : Type) : (p -> q) -> oo (no p) q =
 
 (* Ejercicio. ¿Se puede en lógica intuicionista? *)
 let ley_impl2 (p q : Type) : oo (no p) q -> (p -> q) =
-  admit()
+  fun npoq p ->
+  match npoq with
+  | Inl np -> np p
+  | Inr q -> q
 
 (* Ejercicio. ¿Se puede en lógica intuicionista? *)
 let ley_impl3 (p q : Type) : no (p -> q) -> yy p (no q) =
@@ -206,19 +230,26 @@ let ley_impl3 (p q : Type) : no (p -> q) -> yy p (no q) =
 
 (* Ejercicio. ¿Se puede en lógica intuicionista? *)
 let ley_impl4 (p q : Type) : yy p (no q) -> no (p -> q) =
-  admit()
+  fun (p, nq) pq -> nq (pq p)
 
 (* Tipos para axiomas clásicos *)
 type eliminacion_doble_neg = (#a:Type) -> no (no a) -> a
-type tercero_excluido = (a:Type) -> oo a (no a)
+type tercero_excluido = (#a:Type) -> oo a (no a)
 
 (* Ejercicio *)
 let lte_implica_edn (lte : tercero_excluido) (#a:Type) : eliminacion_doble_neg =
-  admit()
+  fun nna ->
+  match lte with
+  | Inl a -> a
+  | Inr na -> nna na
 
 (* Ejercicio. ¡Difícil! *)
 let edn_implica_lte (edn : eliminacion_doble_neg) (#a:Type) : oo a (no a) =
-  admit()
+  let aux : no (no (oo a (no a))) =
+    fun naona ->
+      let (na, nna) = demorgan2_vuelta naona
+      in nna na
+  in edn aux
 
 (* Ejercicio: ¿la ley de Peirce es intuicionista o clásica?
 Demuestrelá sin axiomas para demostrar que es intuicionista,
