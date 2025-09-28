@@ -79,13 +79,13 @@ let rec triang (n:nat) : nat =
 (* Intente darle un tipo a fib que diga que el resultado es siempre
 mayor o igual al argumento. Si el chequeo falla, dé hipótesis de por qué. *)
 [@@expect_failure]
-let rec fib' (x: nat) : y:nat{y >= x} =
+let rec fib' (x: nat) : y:nat{y >= x /\ y >= 1} =
    if x <= 1 then x else fib' (x - 1) + fib' (x - 2)
 // El chequeo falla ya que fib 2 = 1.
 
 (* Idem para la función factorial. *)
 // [@@expect_failure]
-let rec fac' (x:nat) : y:pos{y >= x} =
+let rec fac' (x:nat) : y:pos{y >= x /\ y >= 1} =
    if x = 0 then 1 else x * fac' (x - 1)
 
 (* Defina la siguiente función que suma una lista de enteros. *)
@@ -96,13 +96,10 @@ let rec sum_int xs =
    | x :: xs' -> x + sum_int xs'
 
 (* Defina la siguiente función que revierte una lista de enteros. *)
-let rec append (#a:Type) (l1:list a) (l2:list a) =
-   match l1 with
-   | [] -> l2
-   | hd :: tl -> hd :: append tl l2
-
 val rev_int : list int -> list int
-let rec rev_int xs =
-   match xs with
-   | [] -> []
-   | x :: xs' -> append (rev_int xs') [x]
+let rev_int xs =
+   let rec go acc xs : Tot (list int) (decreases xs) =
+      match xs with
+      | [] -> acc
+      | x :: xs -> go (x :: acc) xs
+   in go [] xs
