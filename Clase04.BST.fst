@@ -46,16 +46,21 @@ let rec height (t: bst) : nat =
   | L -> 0
   | N (l, _, r) -> 1 + max (height l) (height r)
 
-let insert_size (x:int) (t:bst) : Lemma (size (insert x t) == 1 + size t) =
-  admit()
+let rec insert_size (x:int) (t:bst) : Lemma (size (insert x t) == 1 + size t) =
+  match t with
+  | L -> ()
+  | N (l, _, r) -> (insert_size x l; insert_size x r)
 
-let insert_height (x:int) (t:bst)
-: Lemma (height (insert x t) <= 1 + height t)
-=
-  admit()
+let rec insert_height (x:int) (t:bst)
+: Lemma (height (insert x t) <= 1 + height t) =
+  match t with
+  | L -> ()
+  | N (l, _, r) -> (insert_height x l; insert_height x r)
 
-let insert_mem (x:int) (t:bst) : Lemma (member x (insert x t)) =
-  admit()
+let rec insert_mem (x:int) (t:bst) : Lemma (member x (insert x t)) =
+  match t with
+  | L -> ()
+  | N (l, _, r) -> (insert_mem x l; insert_mem x r)
 
 (* ¿Puede demostrar también que:
      height t <= height (insert x t)
@@ -96,8 +101,21 @@ let delete_size_mem (x:int) (t:bst)
         (ensures size (delete x t) == size t - 1)
 = admit()
 
-let to_list_length (t:bst) : Lemma (length (to_list t) == size t) =
-  admit()
+let rec concat_length (xs ys : list int)
+  : Lemma (length (xs @ ys) == length xs + length ys) =
+  match xs with
+  | [] -> ()
+  | x :: xs' -> concat_length xs' ys
+
+let rec to_list_length (t:bst) : Lemma (length (to_list t) == size t) =
+  match t with
+  | L -> ()
+  | N (l, x, r) -> (
+    to_list_length l;
+    to_list_length r;
+    concat_length (to_list l) [x];
+    concat_length ((to_list l) @ [x]) (to_list r)
+  )
 
 (* Contestar en texto (sin intentar formalizar):
     ¿Es cierto que `member x (insert y (insert x t))`? ¿Cómo se puede probar?
