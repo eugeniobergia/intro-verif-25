@@ -166,7 +166,7 @@ let modus_tollendo_ponens (#a #b : Type)
 =
   fun ab na ->
   match ab with
-  | Inl a -> na a
+  | Inl a -> ex_falso (na a)
   | Inr b -> b
   (* Vale la recíproca? *)
 
@@ -221,7 +221,7 @@ let ley_impl1 (p q : Type) : (p -> q) -> oo (no p) q =
 let ley_impl2 (p q : Type) : oo (no p) q -> (p -> q) =
   fun npoq p ->
   match npoq with
-  | Inl np -> np p
+  | Inl np -> ex_falso (np p)
   | Inr q -> q
 
 (* Ejercicio. ¿Se puede en lógica intuicionista? *)
@@ -234,14 +234,14 @@ let ley_impl4 (p q : Type) : yy p (no q) -> no (p -> q) =
 
 (* Tipos para axiomas clásicos *)
 type eliminacion_doble_neg = (#a:Type) -> no (no a) -> a
-type tercero_excluido = (#a:Type) -> oo a (no a)
+type tercero_excluido = (a:Type) -> oo a (no a)
 
 (* Ejercicio *)
 let lte_implica_edn (lte : tercero_excluido) (#a:Type) : eliminacion_doble_neg =
-  fun nna ->
-  match lte with
+  fun #a nna ->
+  match lte a with
   | Inl a -> a
-  | Inr na -> nna na
+  | Inr na -> ex_falso (nna na)
 
 (* Ejercicio. ¡Difícil! *)
 let edn_implica_lte (edn : eliminacion_doble_neg) (#a:Type) : oo a (no a) =
@@ -259,7 +259,18 @@ es clásica. *)
 type peirce = (#a:Type) -> (#b:Type) -> ((a -> b) -> a) -> a
 
 let lte_implica_peirce (lte : tercero_excluido) : peirce =
-  admit()
+  fun #a #b aba ->
+  match lte a with
+  | Inl a -> a
+  | Inr na -> let ab : (a -> b) = fun a -> (na a)
+              in aba ab
 
 let peirce_implica_lte (pp : peirce) : tercero_excluido =
-  admit()
+  fun x ->
+    let mi_pierce : (((oo x (no x)) -> falso) -> oo x (no x)) -> oo x (no x) =
+      pp #(oo x (no x)) #falso in
+    let f : ((oo x (no x)) -> falso) -> oo x (no x) =
+      fun no_x_o_nox ->
+        let pf : yy (no x) (no (no x)) = demorgan2_vuelta no_x_o_nox in
+        ex_falso ((snd pf) (fst pf)) in
+    mi_pierce f
