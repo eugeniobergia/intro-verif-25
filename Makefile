@@ -18,14 +18,17 @@ dep: .depend.mk
 
 include .depend.mk
 
+$(CACHEDIR)/Clase09.fst.checked: FLAGS+=--include $(CURDIR)/pulse/out/lib/pulse
+$(CACHEDIR)/Clase10.fst.checked: FLAGS+=--include $(CURDIR)/pulse/out/lib/pulse
+
 # The dependency analysis. We call F* on $(ROOTS) to find dependencies
 # transitively. The rule also depends on ALL_FST_FILES and
 # ALL_FSTI_FILES, to make the analysis run again if anything changes. On
 # a first run, both are empty and have no meaning. On a second run, they
 # contain the list of all fst/fsti files found on the dependency graph--
 # any change to them will trigger a reanalysis.
-.depend.mk: $(ROOTS) $(ALL_FST_FILES) $(ALL_FSTI_FILES)
-	$(FSTAR) $(FLAGS) --dep full --already_cached Prims,FStar --warn_error -321 $(ROOTS) --output_deps_to $@
+.depend.mk: $(ROOTS) $(ALL_FST_FILES) $(ALL_FSTI_FILES) pulse
+	$(FSTAR) $(FLAGS) --include $(CURDIR)/pulse/out/lib/pulse --dep full --already_cached Prims,FStar --warn_error -321 $(ROOTS) --output_deps_to $@
 
 .PHONY: dep.graph
 dep.graph:
@@ -51,3 +54,6 @@ Clase08_Eff.exe: Clase08.Eff.fst
 	$(FSTAR) $< --codegen OCaml --extract_module Clase08.Eff --odir Clase08_ocaml
 	cd Clase08_ocaml && $(FSTAR) --ocamlenv dune build
 	install Clase08_ocaml/_build/default/main.exe $@
+
+pulse: pulse/Makefile
+	$(MAKE) -C pulse ADMIT=1
