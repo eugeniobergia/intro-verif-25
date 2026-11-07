@@ -80,8 +80,16 @@ type hoare : (pre:cond) -> (p:stmt) -> (post:cond) -> Type u#1 =
     hoare mid q post ->
     hoare pre (Seq p q) post
 
-  // | H_If :
-  // | H_Assign :
+  | H_If :
+    #c:expr -> #t:stmt -> #e:stmt ->
+    #pre:cond -> #post:cond ->
+    hoare (fun s -> pre s /\ eval_expr s c == 0) t post ->
+    hoare (fun s -> pre s /\ eval_expr s c =!= 0) e post ->
+    hoare pre (IfZ c t e) post
+
+  | H_Assign :
+    #x:var -> #e:expr -> #post:cond ->
+    hoare (fun s -> post (override s x (eval_expr s e))) (Assign x e) post
 
   | H_While :
     #inv':cond -> #c:expr -> #b:stmt ->
@@ -114,13 +122,49 @@ type hoare : (pre:cond) -> (p:stmt) -> (post:cond) -> Type u#1 =
 //   runsto (While c b) s s'
 let r_while (#inv:cond) (#c:expr) (#b:stmt) (#s #s' : state)
             (pf : runsto s (IfZ c (Seq b (While inv c b)) Skip) s')
-  : runsto s (While inv c b) s'
-= admit()
+  : runsto s (While inv c b) s' =
+  match pf with
+  | R_IfZ_True pf_t eq -> (
+    match pf_t with
+    | R_Seq pf1 pf2 -> R_While_True pf1 eq pf2
+  )
+  | R_IfZ_False pf_e neq -> R_While_False neq
 
-let hoare_ok (p:stmt) (pre:cond) (post:cond) (s0 s1 : state) (e_pf : runsto s0 p s1) (pf : hoare pre p post)
+let rec hoare_ok (p:stmt) (pre:cond) (post:cond) (s0 s1 : state)
+                 (e_pf : runsto s0 p s1) (pf : hoare pre p post)
   : Lemma (requires pre s0)
-          (ensures  post s1)
-= admit()
+          (ensures  post s1) =
+  match pf with
+  | H_Seq #p #q #pre #mid #post pf_p pf_q -> (
+    match e_pf with
+    | R_Seq #_ #_ #_ #s' #_ e_p e_q ->
+      hoare_ok p pre mid s0 s' e_p pf_p;
+      hoare_ok q mid post s' s1 e_q pf_q
+  )
+
+  | H_If #c #t #e #pre #post pf_t pf_e -> (
+    match e_pf with
+    | R_IfZ_True e_t eq ->
+      hoare_ok t (fun s -> pre s /\ eval_expr s c == 0) post s0 s1 e_t pf_t
+    | R_IfZ_False e_e neq ->
+      hoare_ok e (fun s -> pre s /\ eval_expr s c =!= 0) post s0 s1 e_e pf_e
+  )
+
+  | H_While #inv' #c #b #inv pf_b -> (
+    match e_pf with
+    | R_While_True #_ #_ #_ #_ #s' #_ e_b eq e_wb -> (
+      hoare_ok b (fun s -> inv s /\ eval_expr s c == 0) inv s0 s' e_b pf_b;
+      hoare_ok (While inv' c b) inv (fun s -> inv s /\ eval_expr s c =!= 0) s' s1 e_wb pf
+    )
+    | _ -> ()
+  )
+  | H_Weaken #pre #p #post pre' post' pf_p pre_imp post_imp ->
+    hoare_ok p pre post s0 s1 e_pf pf_p
+
+  | H_Pure #pre #p #post pre0 pf_p ->
+    hoare_ok p (fun s -> pre s /\ pre0) post s0 s1 e_pf pf_p
+
+  | _ -> ()
 
 type wp = cond -> cond
 
@@ -139,10 +183,18 @@ let hoare_weaken_post (pre:cond) (p:stmt) (post post' : cond)
 (* Cómputo de WPs *)
 
 let assign_wp (x:var) (e:expr) : wp =
-  admit()
+  fun post -> fun s -> post (override s x (eval_expr s e))
+
+let skip_wp : wp =
+  fun post -> post
+
+let seq_wp (wp_p wp_q : wp) : wp =
+  fun post -> wp_p (wp_q post)
 
 let ite_wp (c:expr) (wp_t wp_e : wp) : wp =
-  admit()
+  fun post s ->
+    (eval_expr s c == 0 /\ wp_t post s)
+    \/ (eval_expr s c <> 0 /\ wp_e post s)
 
 let while_wp (inv:cond) (c:expr) (wp_b:wp) : wp =
   fun post s ->
@@ -153,8 +205,8 @@ let while_wp (inv:cond) (c:expr) (wp_b:wp) : wp =
 let rec cwp (p:stmt) : wp =
   match p with
   | Assign x e -> assign_wp x e
-  | Skip -> admit()
-  | Seq p q -> admit()
+  | Skip -> skip_wp
+  | Seq p q -> seq_wp (cwp p) (cwp q)
   | IfZ c t e -> ite_wp c (cwp t) (cwp e)
   | While inv c b -> while_wp inv c (cwp b)
 
@@ -195,13 +247,37 @@ let rec cwp_ok (p:stmt) (post : cond)
         H_Weaken _ _ pf0 () ()
       in
       pf1
+
+    | Skip -> H_Skip post
+
+    | Seq q r ->
+      let mid : cond = cwp r post
+      in let pre : cond = cwp q mid
+      in let pf_r : hoare mid r post = cwp_ok r post
+      in let pf_q : hoare pre q mid = cwp_ok q mid
+      in H_Seq pf_q pf_r
+
+    | Assign x e ->
+      let pre : cond = cwp p post
+      in let pre' : cond = fun s -> post (override s x (eval_expr s e))
+      in let pf : hoare pre' p post = H_Assign #x #e #post
+      in H_Weaken pre post pf () ()
+
+    | IfZ c t e ->
+      let pre : cond = cwp p post
+      in let pre_t : cond = fun s -> pre s /\ eval_expr s c == 0
+      in let pre_e : cond = fun s -> pre s /\ eval_expr s c =!= 0
+      in let pf_t : hoare pre_t t post = magic()
+      in let pf_e : hoare pre_e e post = magic()
+      in H_If pf_t pf_e
+
     | _ -> admit()
 
 (* Agregar 1 a x. *)
 let add1 =
   Assign "x" (Plus (Var "x") (Const 1))
 let wp_add1 : wp = cwp add1
-//let _ = assert (forall s. s "x" = 10 <==> wp_add1 (fun s -> s "x" = 11) s)
+// let _ = assert (forall s. s "x" = 10 <==> wp_add1 (fun s -> s "x" = 11) s)
 (* DESCOMENTAR *)
 (* Arriba garantizamos que la WP para x=11 es x=10. Debería andar luego de completar
 definiciones. *)
