@@ -61,14 +61,17 @@ let rec gcd (x y : nat) : Tot int (decreases %[y; x])  =
   else gcd y (x%y)
 
 (* Una caché para gcd *)
-let cache_elem_t = (int & int & int)
+let cache_elem_t = (x:nat & y:nat & r:int{r == gcd x y})
 let cache : ref (list cache_elem_t) = alloc []
 
 (* Buscar en la caché. Para demostrar que el resultado es correcto, agregue
 un refinamiento a cache_elem_t. Puede usar tuplas dependientes, o tuplas normales. *)
 let find_in_cache (x y : nat) : ML (option (r:int{r == gcd x y})) =
   let rec aux (xs : list cache_elem_t) : ML (option (r:int{r == gcd x y})) =
-    admit() // completar
+    match xs with
+    | [] -> None
+    | (| x', y', r |) :: xs' ->
+      if x' = x && y' = y then Some r else aux xs'
   in
   aux !cache (* !cache lee la referencia *)
 
@@ -78,7 +81,7 @@ let memo_gcd (x y : nat) : ML (r:int{r == gcd x y}) =
   | Some r -> r
   | None ->
     let r = gcd x y in
-    cache := ( x, y, r ) :: !cache;
+    cache := (| x, y, r |) :: !cache;
     r
 
 exception Neg
@@ -88,7 +91,8 @@ let rec go () : ML _ =
     let x = input_int () in
     let y = input_int () in
     (* Si alguno es negativo, lance una excepción. *)
-    let r = gcd x y in (* cambiar por memo_gcd *)
+    if x < 0 || y < 0 then raise Neg;
+    let r = memo_gcd x y in
     assert (r == gcd x y);
     print_string ("gcd = " ^ string_of_int r ^ "\n")
   with

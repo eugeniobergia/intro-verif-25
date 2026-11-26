@@ -267,18 +267,15 @@ let rec cwp_ok (p:stmt) (post : cond)
       let pre : cond = cwp p post
       in let pre_t : cond = fun s -> pre s /\ eval_expr s c == 0
       in let pre_e : cond = fun s -> pre s /\ eval_expr s c =!= 0
-      in let pf_t : hoare pre_t t post = magic()
-      in let pf_e : hoare pre_e e post = magic()
-      in H_If pf_t pf_e
-
-    | _ -> admit()
+      in let pf_t : hoare pre_t t post = H_Weaken pre_t post (cwp_ok t post) () ()
+      in let pf_e : hoare pre_e e post = H_Weaken pre_e post (cwp_ok e post) () ()
+      in H_If #c #t #e #pre #post pf_t pf_e
 
 (* Agregar 1 a x. *)
 let add1 =
   Assign "x" (Plus (Var "x") (Const 1))
 let wp_add1 : wp = cwp add1
-// let _ = assert (forall s. s "x" = 10 <==> wp_add1 (fun s -> s "x" = 11) s)
-(* DESCOMENTAR *)
+let _ = assert (forall s. s "x" = 10 <==> wp_add1 (fun s -> s "x" = 11) s)
 (* Arriba garantizamos que la WP para x=11 es x=10. Debería andar luego de completar
 definiciones. *)
 
@@ -287,8 +284,9 @@ let add2 =
   Assign "y" (Plus (Var "x") (Const 1)) `Seq`
   Assign "x" (Plus (Var "y") (Const 1))
 let wp_add2 : wp = cwp add2
-// let _ = assert (forall s. ?????????? <==> wp_add2 (fun s -> s "x" = 12) s)
-(* Encontrar la WP para la postcondición x=12. ¿Qué pasa con y? *)
+let _ = assert (forall s. s "x" = 10 <==> wp_add2 (fun s -> s "x" = 12) s)
+(* Encontrar la WP para la postcondición x=12. ¿Qué pasa con y?
+   y no aparece en la WP, se sobreescribe antes de leerse. *)
 
 (* Intercambiando dos variables via una tercera. *)
 let swap : stmt =
@@ -298,13 +296,18 @@ let swap : stmt =
 let wp_swap : wp = cwp swap
 (* Demuestre que el programa intercambia x e y, demostrando un teorema sobre
 la WP *paramétrico* sobre x e y. *)
-// let _ = assert (forall s x0 y0.  ????????   ==> wp_swap (fun s -> s "x" = y0 /\ s "y" = x0) s)
+let _ = assert (forall s x0 y0. s "x" = x0 /\ s "y" = y0 ==> wp_swap (fun s -> s "x" = y0 /\ s "y" = x0) s)
 
 (* Opcional: escriba el programa siguiente
      x = x + y;
      y = x - y;
      x = x - y;
   y demuestra que también intercambia los valores de x e y. *)
+let swap' : stmt =
+  Assign "x" (Plus (Var "x") (Var "y")) `Seq`
+  Assign "y" (Minus (Var "x") (Var "y")) `Seq`
+  Assign "x" (Minus (Var "x") (Var "y"))
+let _ = assert (forall s x0 y0. s "x" = x0 /\ s "y" = y0 ==> cwp swap' (fun s -> s "x" = y0 /\ s "y" = x0) s)
 
 (* Mover x a y. *)
 
@@ -314,22 +317,22 @@ let move_x_y : stmt =
        y := y + 1 *)
   Assign "y" (Const 0) `Seq`
   While 
-    (admit()) // invariante
+    (fun s -> s "y" <= s "x") // invariante
     (Lt (Var "y") (Var "x"))
     (Assign "y" (Plus (Var "y") (Const 1)))
 let wp_move_x_y : wp = cwp move_x_y
 let pre_move = wp_move_x_y (fun s -> s "x" == s "y")
 (* Encuentre la WP para la postcondición x=y. *)
-// let _ = assert (forall s. ?????????? <==> pre_move s)
+let _ = assert (forall s. s "x" >= 0 <==> pre_move s)
 
-// let move_x_y_ok :
-//   hoare (fun s -> s "x" >= 0) move_x_y (fun s -> s "y" = s "x")
-// = hoare_strengthen_pre  _ _ _ _ () <| cwp_ok move_x_y (fun s -> s "y" = s "x")
+let move_x_y_ok :
+  hoare (fun s -> s "x" >= 0) move_x_y (fun s -> s "y" = s "x")
+= hoare_strengthen_pre  _ _ _ _ () <| cwp_ok move_x_y (fun s -> s "y" = s "x")
 (* Armando una tripleta a partir del lema anterior. Esto puede hacerse para
 cada uno de los programas anteriores. Descomentar, debería andar. *)
 
 (* Cuenta regresiva. Encuentre la WP para la postcondición x=0. ¿Cuál invariante debe usar? *)
-let countdown_inv : cond = admit()
+let countdown_inv : cond = fun s -> s "x" >= 0
 let countdown : stmt =
   While
     countdown_inv
@@ -337,7 +340,16 @@ let countdown : stmt =
     (Assign "x" (Plus (Var "x") (Const (-1))))
 let wp_countdown : wp = cwp countdown
 let pre_countdown = wp_countdown (fun s -> s "x" == 0)
-let monotonia (p:stmt) (q1 q2 : cond)
+let _ = assert (forall s. s "x" >= 0 <==> pre_countdown s)
+
+let rec monotonia (p:stmt) (q1 q2 : cond)
   : Lemma (requires forall s. q1 s ==> q2 s)
           (ensures forall s. cwp p q1 s ==> cwp p q2 s)
-  = admit()
+  = match p with
+    | Assign _ _ | Skip | While _ _ _ -> ()
+    | Seq q r ->
+      monotonia r q1 q2;
+      monotonia q (cwp r q1) (cwp r q2)
+    | IfZ _ t e ->
+      monotonia t q1 q2;
+      monotonia e q1 q2

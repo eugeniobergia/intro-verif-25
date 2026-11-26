@@ -185,6 +185,7 @@ let demorgan1_ida (#a #b : Type) : oo (no a) (no b) -> no (yy a b) =
   | Inl na -> na a
   | Inr nb -> nb b
 
+(* No es intuicionista. *)
 let demorgan1_vuelta (#a #b : Type) : no (yy a b) -> oo (no a) (no b) =
   admit()
 
@@ -214,6 +215,7 @@ let elim_triple_neg (#a:Type) : no (no (no a)) -> no a =
   fun f a -> f (fun g -> g a)
 
 (* Ejercicio. ¿Se puede en lógica intuicionista? *)
+(* No. *)
 let ley_impl1 (p q : Type) : (p -> q) -> oo (no p) q =
   admit()
 
@@ -225,6 +227,7 @@ let ley_impl2 (p q : Type) : oo (no p) q -> (p -> q) =
   | Inr q -> q
 
 (* Ejercicio. ¿Se puede en lógica intuicionista? *)
+(* No. *)
 let ley_impl3 (p q : Type) : no (p -> q) -> yy p (no q) =
   admit()
 

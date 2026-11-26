@@ -104,14 +104,28 @@ let get_l (t:bst{N? t}) : GTot bst =
   match t with
   | N (l, _, _) -> l
 
+let rec all_gt_not_in (x y:int) (t:bst0)
+  : Lemma (requires all_gt y t /\ x <= y) (ensures not (in_tree x t)) =
+  match t with
+  | L -> ()
+  | N (l, _, r) -> all_gt_not_in x y l; all_gt_not_in x y r
+
+let rec all_lt_not_in (x y:int) (t:bst0)
+  : Lemma (requires all_lt y t /\ x >= y) (ensures not (in_tree x t)) =
+  match t with
+  | L -> ()
+  | N (l, _, r) -> all_lt_not_in x y l; all_lt_not_in x y r
+
 let in_l (x:int) (t:bst)
   // : Lemma (requires N? t /\ lt_root x t) (ensures in_tree x t == in_tree x (get_l t)) =
   : Lemma (requires N? t /\ lt_root x t) (ensures not (in_tree x (get_r t))) =
-  admit()
+  let N (_, y, r) = t in
+  all_gt_not_in x y r
 
 let in_r (x:int) (t:bst)
   : Lemma (requires N? t /\ gt_root x t) (ensures in_tree x t == in_tree x (get_r t)) =
-  admit()
+  let N (l, y, _) = t in
+  all_lt_not_in x y l
 
 let rec member_ok (x:int) (t:bst) : Lemma (member x t == in_tree x t) =
   match t with

@@ -34,7 +34,7 @@ let mat (a:Type) (m n : nat) : Type =
   vec (vec a m) n
 
 let matidx (#a:Type) (#m #n : nat) (ma : mat a m n) (i : nat{i < m}) (j : nat{j < n}) : a =
-  admit()
+  vidx (vidx ma j) i
 
 let matupd (#a:Type) (#m #n : nat) (ma : mat a m n) (i : nat{i < m}) (j : nat{j < n}) (x : a) : mat a m n =
-  admit()
+  vupd ma j (vupd (vidx ma j) i x)

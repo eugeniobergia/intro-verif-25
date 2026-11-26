@@ -92,14 +92,36 @@ let rec delete (x: int) (t: bst) : bst =
 (* Un poco más difícil. Require un lema auxiliar sobre extract_min:
 declárelo y demuéstrelo. Si le parece conveniente, puede modificar
 las definiciones de delete, delete_root y extract_min. *)
-let delete_size (x:int) (t:bst) : Lemma (delete x t == t \/ size (delete x t) == size t - 1) =
-  admit()
+let rec extract_min_size (t:bst)
+  : Lemma (match extract_min t with
+           | None -> t == L
+           | Some (_, t') -> size t' == size t - 1) =
+  match t with
+  | L -> ()
+  | N (L, _, _) -> ()
+  | N (l, _, _) -> extract_min_size l
+
+let delete_root_size (t:bst{N? t}) : Lemma (size (delete_root t) == size t - 1) =
+  let N (_, _, r) = t in
+  extract_min_size r
+
+let rec delete_size (x:int) (t:bst) : Lemma (delete x t == t \/ size (delete x t) == size t - 1) =
+  match t with
+  | L -> ()
+  | N (l, y, r) ->
+    if x < y then delete_size x l
+    else if x > y then delete_size x r
+    else delete_root_size t
 
 (* Versión más fuerte del lema anterior. *)
-let delete_size_mem (x:int) (t:bst)
+let rec delete_size_mem (x:int) (t:bst)
 : Lemma (requires member x t)
         (ensures size (delete x t) == size t - 1)
-= admit()
+= match t with
+  | N (l, y, r) ->
+    if x < y then delete_size_mem x l
+    else if x > y then delete_size_mem x r
+    else delete_root_size t
 
 let rec concat_length (xs ys : list int)
   : Lemma (length (xs @ ys) == length xs + length ys) =
@@ -119,5 +141,10 @@ let rec to_list_length (t:bst) : Lemma (length (to_list t) == size t) =
 
 (* Contestar en texto (sin intentar formalizar):
     ¿Es cierto que `member x (insert y (insert x t))`? ¿Cómo se puede probar?
+    Sí, insert nunca elimina elementos. Se prueba usando insert_mem
+    y con un lema `member x t ==> member x (insert y t)`.
     ¿Es cierto que `delete x (insert x t) == t`?
+  - No, insert agrega x como hoja, pero delete busca la primera
+    aparición de x desde la raíz (que puede ser otra, porque se admiten
+    duplicados) y además delete_root reestructura el árbol.
 *)

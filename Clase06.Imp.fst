@@ -159,4 +159,4 @@ let rec hoare_ok (p:stmt) (pre:cond) (post:cond) (pf : hoare pre p post)
 let st0 : state = fun _ -> 0
 
 let test1 : hoare (fun _ -> true) (Assign "x" (Const 1)) (fun s -> s "x" = 1) =
-  admit()
+  H_Assign
