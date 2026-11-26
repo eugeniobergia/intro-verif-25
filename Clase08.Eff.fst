@@ -33,7 +33,10 @@ es la división de x e y (cuando y no es cero), y que lanza la excepción
 DivZero si y=0. La precondición debe ser True. *)
 let divide' (x y : int)
 : Exn int (requires True)
-          (ensures fun (r : result int) -> if y <> 0 then r == V (x / y) else r == E DivZero) // True)
+          (* En esta versión de F* la postcondición de Exn sólo habla del
+             resultado normal, no de `result`: decimos que si retorna, y <> 0
+             y el resultado es x / y. Si y = 0, la única opción es lanzar. *)
+          (ensures fun r -> y <> 0 /\ r == x / y)
 = if y = 0 then raise DivZero
   else x / y
 
@@ -45,7 +48,7 @@ es simplemente algo que falta en la librería estándar, pero puede hacerse). *)
 (* ML x = All x (fun _ -> True) (fun _ _ _ -> True) *)
 let test_catch () : ML int =
   try
-    divide' 1 0
+    (divide' 1 0 <: int)
   with
   | DivZero -> 0
   | _ -> 42 (* imposible, pero por la falta de especificación tenemos que escribir este caso *)

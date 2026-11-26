@@ -1,7 +1,7 @@
 module Clase04.Fib
 
 (* Hace que '*' sea la multiplicación de enteros, en vez del constructor de tuplas. *)
-open FStar.Mul
+// open FStar.Mul
 
 let abs (x : int)   : nat = if x >= 0 then x else -x
 let max (x y : int) : int = if x > y then x else y

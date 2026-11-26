@@ -1,6 +1,6 @@
 module Clase07.WP
 
-open FStar.Mul
+// open FStar.Mul
 
 type var = string
 type state = var -> int

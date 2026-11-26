@@ -1,6 +1,6 @@
 module Clase04.BST
 
-open FStar.Mul
+// open FStar.Mul
 open FStar.List.Tot
 
 let max (x y : int) : int = if x > y then x else y

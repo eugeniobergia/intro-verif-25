@@ -38,6 +38,12 @@ let models (#a:eqtype)
 // Discriminador:
 // let Nil? = function | Nil -> true | _ -> false
 
+let is_empty_ok_lem (#a:eqtype) (xs:list a)
+  : Lemma (Nil? xs <==> xs `models` TSet.empty)
+  = match xs with
+    | [] -> ()
+    | x::_ -> assert (mem x xs) // testigo de que xs no modela el vacío
+
 let ins_ok_lem (#a:eqtype) (x:a) (xs:list a) (ss : TSet.set a)
   : Lemma (requires xs `models` ss)
           (ensures  ins x xs
@@ -61,10 +67,10 @@ let del_ok_lem (#a:eqtype) (y:a) (xs:list a) (ss : TSet.set a)
   Classical.forall_intro (del_ok_aux y xs)
 
 instance listas_son_container_laws (a:eqtype)
-  : container_laws a (list a) (listas_son_container0 a) = {
+  : container_laws a (list a) = {
     models = models;
     empty_ok = (fun _ -> ());
-    is_empty_ok = (fun _ -> ());
+    is_empty_ok = is_empty_ok_lem;
     mem_ok = (fun _ _ _ -> ());
     ins_ok = (fun _ _ _ -> ()); // ins_ok_lem
     del_ok = del_ok_lem;

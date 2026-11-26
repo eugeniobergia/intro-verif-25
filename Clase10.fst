@@ -6,6 +6,7 @@ module U32 = FStar.UInt32
 module B = Pulse.Lib.Box
 
 (* Suma paralela *)
+divergent
 fn incr_par (x y : ref int)
   requires x |-> 'vx ** y |-> 'vy
   ensures  x |-> ('vx + 1) ** y |-> ('vy + 1)
@@ -137,6 +138,7 @@ fn try_acquire (#p:slprop) (l:lock)
 }
 
 // Adquirir el lock (bloqueante).
+divergent
 fn rec acquire (#p:slprop) (l:lock)
   preserves lock_alive l p
   ensures   p
@@ -171,12 +173,14 @@ fn release (#p:slprop) (l:lock)
 
 instance fake_is_send (a : slprop) : is_send a = magic()
 
+divergent
 fn suma_paralela_mutex ()
 {
   let r = alloc 0;
   let l = new_lock (exists* v. r |-> v);
   dup_lock_alive l;
-  Pulse.Lib.Par.par
+  // par_div: los hilos llaman a acquire, que puede no terminar
+  Pulse.Lib.Par.par_div
     #(lock_alive l (exists* (v:int). r |-> v))
     #(lock_alive l (exists* (v:int). r |-> v))
     #(lock_alive l (exists* (v:int). r |-> v))
@@ -196,6 +200,7 @@ fn suma_paralela_mutex ()
   ()
 }
 
+divergent
 fn muerto (#p:slprop) (l:lock)
   preserves lock_alive l p
 {

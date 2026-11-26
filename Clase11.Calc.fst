@@ -2,7 +2,7 @@ module Clase11.Calc
 
 (* Algoritmo extendido de Euclides *)
 
-open FStar.Mul
+// open FStar.Mul
 
 (* [a] divide a [b] *)
 let ( /? ) a b = exists (c:int). a * c == b

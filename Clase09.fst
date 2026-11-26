@@ -113,6 +113,7 @@ fn is_list_non_null_ref #t (a : llist t) (s : list t)
   }
 }
 
+divergent
 fn insitu_rev #t (a : llist t) (s : list t)
   requires is_list a s
   returns  b : llist t
